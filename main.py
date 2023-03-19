@@ -1,17 +1,15 @@
-import asyncio
-import logging
-from aiogram import Bot, Dispatcher, types, executor
+import asyncio, logging
 import motor.motor_asyncio
+from aiogram import Bot, Dispatcher, types, executor
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=")
+bot = Bot(token="6299978956:AAHLZmWOkt429oCt_YmHon9Wl-lzkd_8vVc")
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-cluster = motor.motor_asyncio.AsyncIOMotorClient("")
+cluster = motor.motor_asyncio.AsyncIOMotorClient("mongodb+srv://admin:panov123@cluster0.jhgyz.mongodb.net/?retryWrites=true&w=majority")
 collection = cluster.chat.articles
 
 
@@ -32,7 +30,7 @@ async def cmd_start(message: types.Message):
 async def cmd_news(message: types.Message):
     if message.from_user.id == 745457912:
         try:
-            articles = await collection.find().to_list(None)
+            articles = await collection.find(limit=10).to_list(None)
             await bot.send_message(chat_id=message.from_user.id, text='Последние 10 новостей:')
             for article in articles:
                 await bot.send_message(chat_id=message.from_user.id, text=article['title'])
@@ -78,15 +76,14 @@ async def cmd_sendall(message: types.Message):
         except:
             pass
 
+
 class StatesList:
     name = "Name state"
     age = "Age state"
 
-
 class FSMRegistration(StatesGroup):
     name = State()
     age = State()
-
 
 @dp.message_handler(commands="articleadd")
 async def cmd_start(message: types.Message):
@@ -94,13 +91,11 @@ async def cmd_start(message: types.Message):
         await message.answer("Отправь название новости")
         await FSMRegistration.name.set()
 
-
 @dp.message_handler(state=FSMRegistration.name)
 async def get_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
     await message.answer("Отправь описание статьи")
     await FSMRegistration.age.set()
-
 
 @dp.message_handler(state=FSMRegistration.age)
 async def get_age(message: types.Message, state: FSMContext):
@@ -116,10 +111,6 @@ async def get_age(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-async def on_startup(dp):
-    await bot.send_message(chat_id='YOUR_CHAT_ID', text='Бот запущен')
-
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(on_startup(dp))
     executor.start_polling(dp, skip_updates=True)
